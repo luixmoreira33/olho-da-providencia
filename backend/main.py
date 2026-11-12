@@ -9,6 +9,7 @@ from config import settings
 from services.k8s import KubernetesClient
 from services.elk import ElkClient
 from services.dynatrace import DynatraceClient
+from services.ai import AIInsightClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ class ApplicationStatus(BaseModel):
     elk: Optional[ElkStatus] = None
     dynatrace: Optional[DynatraceStatus] = None
     summary: str
+    ai_insight: Optional[str] = None
 
 # Initialize clients once
 okd_client = KubernetesClient(
@@ -70,6 +72,9 @@ elk_client = ElkClient(
     settings.elk_service_field, settings.elk_time_range
 )
 dynatrace_client = DynatraceClient(settings.dynatrace_url, settings.dynatrace_token)
+ai_client = AIInsightClient(
+    settings.ai_enabled, settings.ai_base_url, settings.ai_api_key, settings.ai_model
+)
 
 
 def generate_mock_apps() -> List[ApplicationStatus]:
@@ -151,6 +156,11 @@ def aggregate_status() -> List[ApplicationStatus]:
             overall = "Healthy"
             summary = "Tudo operacional. Sem problemas relevantes."
 
+        # AI insight (only if there are errors)
+        ai_insight = None
+        if elk and elk.recent_errors and elk.error_count_1h >= 3:
+            ai_insight = ai_client.analyze_errors(name, elk.recent_errors, elk.error_count_1h)
+
         result.append(ApplicationStatus(
             name=name,
             overall_status=overall,
@@ -158,7 +168,8 @@ def aggregate_status() -> List[ApplicationStatus]:
             k8s_eks=eks,
             elk=elk,
             dynatrace=dt,
-            summary=summary
+            summary=summary,
+            ai_insight=ai_insight
         ))
     return result
 
@@ -169,7 +180,8 @@ def root():
         "okd": okd_client.configured,
         "eks": eks_client.configured,
         "elk": elk_client.configured,
-        "dynatrace": dynatrace_client.configured
+        "dynatrace": dynatrace_client.configured,
+        "ai": ai_client.enabled
     }
     return {
         "message": "Status Dashboard API - OKD / EKS / ELK / Dynatrace",
