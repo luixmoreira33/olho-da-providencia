@@ -91,6 +91,21 @@ function AppCard({ app }) {
               </div>
             )}
           </div>
+
+          {app.ai_insight && (
+            <div style={{
+              marginTop: '16px',
+              padding: '12px 16px',
+              background: '#f0f9ff',
+              border: '1px solid #bae6fd',
+              borderRadius: '8px',
+              fontSize: '14px',
+              lineHeight: '1.5'
+            }}>
+              <strong style={{ color: '#0369a1' }}>Análise IA</strong>
+              <p style={{ margin: '8px 0 0 0', whiteSpace: 'pre-line' }}>{app.ai_insight}</p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -184,7 +199,7 @@ export default function App() {
       )}
 
       <footer style={{ marginTop: '40px', color: '#9ca3af', fontSize: '13px' }}>
-        Dados mockados para demonstração. Configure as integrações reais no backend (APIs do OKD, EKS, Elasticsearch e Dynatrace).
+        Dados reais + análise de IA (quando configurada). Configure as conexões no backend via .env.
       </footer>
     </div>
   )
