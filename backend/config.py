@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     dynatrace_token: Optional[str] = os.getenv("DYNATRACE_TOKEN")
     dynatrace_entity_selector: str = os.getenv("DYNATRACE_ENTITY_SELECTOR", "type(SERVICE)")
 
+    # AI Insight (OpenAI-compatible: Grok, OpenAI, Ollama, etc.)
+    ai_enabled: bool = os.getenv("AI_ENABLED", "false").lower() == "true"
+    ai_base_url: Optional[str] = os.getenv("AI_BASE_URL")  # e.g. https://api.x.ai/v1 or http://localhost:11434/v1
+    ai_api_key: Optional[str] = os.getenv("AI_API_KEY")
+    ai_model: str = os.getenv("AI_MODEL", "grok-beta")
+
     # General
     app_list: Optional[str] = os.getenv("APP_LIST")  # comma-separated explicit list of apps (optional)
     use_mock_if_unconfigured: bool = os.getenv("USE_MOCK_IF_UNCONFIGURED", "true").lower() == "true"
