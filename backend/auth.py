@@ -1,4 +1,4 @@
-"""Simple local authentication (JWT)."""
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import jwt, JWTError
@@ -6,9 +6,9 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-SECRET_KEY = "change-me-in-production-use-env"  # override via settings later
+SECRET_KEY = os.getenv("JWT_SECRET", "change-me-in-production-use-env")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token", auto_error=False)

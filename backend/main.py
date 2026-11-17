@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from auth import get_current_user
 from fastapi.middleware.cors import CORSMiddleware
+from security import SecurityHeadersMiddleware, RateLimitMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 from datetime import datetime
@@ -19,6 +20,8 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Status Dashboard API", description="Painel unificado OKD / EKS / ELK / Dynatrace / EC2 / ECS")
 
 app.add_middleware(
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
