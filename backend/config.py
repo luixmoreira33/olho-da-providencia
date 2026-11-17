@@ -36,6 +36,15 @@ class Settings(BaseSettings):
     ai_api_key: Optional[str] = os.getenv("AI_API_KEY")
     ai_model: str = os.getenv("AI_MODEL", "grok-beta")
 
+    # AWS (EC2 + ECS)
+    aws_region: str = os.getenv("AWS_REGION", "us-east-1")
+    aws_access_key_id: Optional[str] = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: Optional[str] = os.getenv("AWS_SECRET_ACCESS_KEY")
+    # If not set, uses default credential chain (IAM role, env, ~/.aws/credentials)
+
+    # Admin filter (comma-separated names to show; empty = show all discovered)
+    visible_resources: Optional[str] = os.getenv("VISIBLE_RESOURCES")
+
     # General
     app_list: Optional[str] = os.getenv("APP_LIST")  # comma-separated explicit list of apps (optional)
     use_mock_if_unconfigured: bool = os.getenv("USE_MOCK_IF_UNCONFIGURED", "true").lower() == "true"
