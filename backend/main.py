@@ -10,11 +10,12 @@ from services.k8s import KubernetesClient
 from services.elk import ElkClient
 from services.dynatrace import DynatraceClient
 from services.ai import AIInsightClient
+from services.aws import AWSClient
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Status Dashboard API", description="Painel unificado OKD / EKS / ELK / Dynatrace")
+app = FastAPI(title="Status Dashboard API", description="Painel unificado OKD / EKS / ELK / Dynatrace / EC2 / ECS")
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,7 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Models (same as before)
+# Models
 class K8sStatus(BaseModel):
     cluster: str
     namespace: str
@@ -47,6 +48,11 @@ class DynatraceStatus(BaseModel):
     response_time_ms: float
     status: str
 
+class AwsResourceStatus(BaseModel):
+    type: str  # ec2 or ecs
+    status: str
+    details: dict
+
 class ApplicationStatus(BaseModel):
     name: str
     overall_status: str
@@ -54,6 +60,7 @@ class ApplicationStatus(BaseModel):
     k8s_eks: Optional[K8sStatus] = None
     elk: Optional[ElkStatus] = None
     dynatrace: Optional[DynatraceStatus] = None
+    aws: Optional[AwsResourceStatus] = None
     summary: str
     ai_insight: Optional[str] = None
 
@@ -75,7 +82,14 @@ dynatrace_client = DynatraceClient(settings.dynatrace_url, settings.dynatrace_to
 ai_client = AIInsightClient(
     settings.ai_enabled, settings.ai_base_url, settings.ai_api_key, settings.ai_model
 )
+aws_client = AWSClient(
+    settings.aws_region, settings.aws_access_key_id, settings.aws_secret_access_key
+)
 
+def get_visible_set() -> Optional[set]:
+    if not settings.visible_resources:
+        return None
+    return {r.strip() for r in settings.visible_resources.split(",") if r.strip()}
 
 def generate_mock_apps() -> List[ApplicationStatus]:
     """Fallback mock data when sources are not configured."""
@@ -108,40 +122,48 @@ def generate_mock_apps() -> List[ApplicationStatus]:
         result.append(ApplicationStatus(name=name, overall_status=overall, k8s_okd=okd, k8s_eks=eks, elk=elk, dynatrace=dt, summary=summary))
     return result
 
-
 def aggregate_status() -> List[ApplicationStatus]:
     """Aggregate real data from all sources. Falls back to mock if nothing configured."""
     okd_data = okd_client.get_applications_status()
     eks_data = eks_client.get_applications_status()
-    # Discover app names from K8s first
-    all_apps = set(okd_data.keys()) | set(eks_data.keys())
+    elk_data = elk_client.get_applications_status()
+    dt_data = dynatrace_client.get_applications_status()
+    ec2_data = aws_client.get_ec2_status()
+    ecs_data = aws_client.get_ecs_status()
 
-    explicit_apps = None
+    all_names = set(okd_data.keys()) | set(eks_data.keys()) | set(elk_data.keys()) | set(dt_data.keys()) | set(ec2_data.keys()) | set(ecs_data.keys())
+
     if settings.app_list:
-        explicit_apps = [a.strip() for a in settings.app_list.split(",") if a.strip()]
-        all_apps |= set(explicit_apps)
+        explicit = {a.strip() for a in settings.app_list.split(",") if a.strip()}
+        all_names |= explicit
 
-    elk_data = elk_client.get_applications_status(list(all_apps) if all_apps else None)
-    dt_data = dynatrace_client.get_applications_status(list(all_apps) if all_apps else None)
+    visible = get_visible_set()
+    if visible is not None:
+        all_names = all_names & visible
 
-    all_apps |= set(elk_data.keys()) | set(dt_data.keys())
-
-    if not all_apps and settings.use_mock_if_unconfigured:
+    if not all_names and settings.use_mock_if_unconfigured:
         logger.info("No real data sources configured or returning data — using mock")
         return generate_mock_apps()
 
     result = []
-    for name in sorted(all_apps):
+    for name in sorted(all_names):
         okd = K8sStatus(**okd_data[name]) if name in okd_data else None
         eks = K8sStatus(**eks_data[name]) if name in eks_data else None
         elk = ElkStatus(**elk_data[name]) if name in elk_data else None
         dt = DynatraceStatus(**dt_data[name]) if name in dt_data else None
+
+        aws_status = None
+        if name in ec2_data:
+            aws_status = AwsResourceStatus(type="ec2", status=ec2_data[name]["status"], details=ec2_data[name])
+        elif name in ecs_data:
+            aws_status = AwsResourceStatus(type="ecs", status=ecs_data[name]["status"], details=ecs_data[name])
 
         statuses = []
         if okd: statuses.append(okd.status)
         if eks: statuses.append(eks.status)
         if elk: statuses.append(elk.status)
         if dt: statuses.append(dt.status)
+        if aws_status: statuses.append(aws_status.status)
 
         if not statuses:
             continue
@@ -156,7 +178,6 @@ def aggregate_status() -> List[ApplicationStatus]:
             overall = "Healthy"
             summary = "Tudo operacional. Sem problemas relevantes."
 
-        # AI insight (only if there are errors)
         ai_insight = None
         if elk and elk.recent_errors and elk.error_count_1h >= 3:
             ai_insight = ai_client.analyze_errors(name, elk.recent_errors, elk.error_count_1h)
@@ -168,11 +189,11 @@ def aggregate_status() -> List[ApplicationStatus]:
             k8s_eks=eks,
             elk=elk,
             dynatrace=dt,
+            aws=aws_status,
             summary=summary,
             ai_insight=ai_insight
         ))
     return result
-
 
 @app.get("/")
 def root():
@@ -181,10 +202,11 @@ def root():
         "eks": eks_client.configured,
         "elk": elk_client.configured,
         "dynatrace": dynatrace_client.configured,
-        "ai": ai_client.enabled
+        "ai": ai_client.enabled,
+        "aws": aws_client.configured
     }
     return {
-        "message": "Status Dashboard API - OKD / EKS / ELK / Dynatrace",
+        "message": "Status Dashboard API - OKD / EKS / ELK / Dynatrace / EC2 / ECS",
         "sources_configured": sources,
         "docs": "/docs"
     }
