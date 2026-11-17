@@ -1,65 +1,44 @@
-# Painel de Status Unificado (OKD / EKS / ELK / Dynatrace)
+# Olho da Providência
 
-Dashboard prático para desenvolvedores acompanharem o status por aplicação de forma objetiva.
+**O painel que responde “minha app está bem?” em 5 segundos.**
 
-## O que você precisa fazer
+Consolida status de **OKD, EKS, ELK, Dynatrace, EC2 e ECS** por aplicação, com análise de IA, deep links e visão de conexões (perfil avançado).
 
-1. Copie o exemplo de configuração:
-   ```bash
-   cd backend
-   cp .env.example .env
-   ```
-2. Edite o `.env` com os dados reais de conexão (kubeconfigs, URLs, tokens, etc.).
-3. Instale as dependências e rode.
-
-Pronto. Se alguma fonte não estiver configurada ou falhar, o sistema usa dados mockados (controlado por `USE_MOCK_IF_UNCONFIGURED`) e continua funcionando.
-
-## Como rodar
-
-### Backend
+## Quick Start (modo demo)
 
 ```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+git clone https://github.com/luixmoreira33/olho-da-providencia.git
+cd olho-da-providencia
+docker compose up --build
 ```
 
-Documentação: http://localhost:8000/docs  
-Status das fontes: http://localhost:8000/
+- Frontend: http://localhost:5173  
+- Backend: http://localhost:8000  
+- Docs: http://localhost:8000/docs  
 
-### Frontend
+Sem nenhuma credencial o painel sobe com dados mockados.
 
+## Configuração real
+Copie `backend/.env.example` para `backend/.env` e preencha as fontes.  
+Use a aba **Admin** para controlar o que aparece e mapear apps.
+
+## Recursos principais
+- Status Healthy / Warning / Critical por app
+- Cards expansíveis + deep links
+- Análise de IA com mascaramento de dados sensíveis
+- Conexões (banco, Redis, RabbitMQ) só para perfil avançado
+- Admin visual, modo TV, dark mode, timeline
+- Autenticação local + base OIDC
+- Helm chart para OKD/EKS
+
+## Documentação
+- `docs/produto/` — visão, personas, roadmap
+- `docs/arquitetura.md`
+- `docs/seguranca.md`
+- `docs/comercial/` — posicionamento, preços, one-pager, roteiro de demo, ROI
+- `docs/mapeamento-de-apps.md`
+
+## Deploy em Kubernetes
 ```bash
-cd frontend
-npm install
-npm run dev
+helm install olho ./helm/olho-da-providencia
 ```
-
-Acesse http://localhost:5173
-
-## Variáveis de conexão (resumo)
-
-| Variável              | Descrição                                      | Exemplo                          |
-|-----------------------|------------------------------------------------|----------------------------------|
-| `OKD_KUBECONFIG`      | Caminho do kubeconfig do OKD                   | `/home/user/.kube/okd-config`    |
-| `OKD_CONTEXT`         | Contexto no kubeconfig                         | `okd-prod`                       |
-| `OKD_NAMESPACE`       | Namespace padrão                               | `production`                     |
-| `OKD_APP_LABEL`       | Label que identifica a app                     | `app`                            |
-| `EKS_KUBECONFIG`      | Caminho do kubeconfig do EKS                   | `/home/user/.kube/eks-config`    |
-| `ELK_URL`             | URL do Elasticsearch                           | `https://es:9200`                |
-| `ELK_API_KEY`         | API Key (preferível)                           | `...`                            |
-| `ELK_SERVICE_FIELD`   | Campo que contém o nome da app nos logs        | `service.name` ou `kubernetes.labels.app` |
-| `DYNATRACE_URL`       | URL do ambiente Dynatrace                      | `https://xxx.live.dynatrace.com` |
-| `DYNATRACE_TOKEN`     | API Token                                      | `dt0c01....`                     |
-
-## Como as apps são identificadas
-
-- **Kubernetes (OKD/EKS)**: pelo valor da label definida em `OKD_APP_LABEL` / `EKS_APP_LABEL` (padrão `app`).
-- **ELK**: pelo campo definido em `ELK_SERVICE_FIELD`.
-- **Dynatrace**: matching por nome do serviço/entidade afetada nos problemas abertos.
-
-Se quiser uma lista fixa de apps, use `APP_LIST=app1,app2,app3`.
-
-## Personalização do frontend
-
-O código está em `frontend/src/App.jsx`. Os cards, cores, filtros e layout são fáceis de ajustar.

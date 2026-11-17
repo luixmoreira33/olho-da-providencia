@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "olho-da-providencia.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "olho-da-providencia.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "olho-da-providencia.name" . }}
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 8000
+          env:
+            - name: USE_MOCK_IF_UNCONFIGURED
+              value: {{ .Values.env.USE_MOCK_IF_UNCONFIGURED | quote }}
+            - name: JWT_SECRET
+              value: {{ .Values.env.JWT_SECRET | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

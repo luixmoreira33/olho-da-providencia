@@ -1,0 +1,6 @@
+apiVersion: v2
+name: olho-da-providencia
+description: Painel unificado de status por aplicação
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
