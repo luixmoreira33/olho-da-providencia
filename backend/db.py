@@ -48,15 +48,13 @@ def init_db():
             FOREIGN KEY (app_id) REFERENCES apps(id)
         );
 
-        CREATE TABLE IF NOT EXISTS app_connections (
+        CREATE TABLE IF NOT EXISTS audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            app_id INTEGER,
-            kind TEXT NOT NULL,           -- database, redis, rabbitmq, kafka, http, etc.
-            host TEXT,
-            port INTEGER,
-            name TEXT,
-            metadata TEXT DEFAULT '{}',
-            FOREIGN KEY (app_id) REFERENCES apps(id)
+            username TEXT,
+            action TEXT NOT NULL,
+            resource TEXT,
+            details TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
     """)
     conn.commit()
@@ -101,10 +99,12 @@ def save_connection(app_id: int, kind: str, host: str, port: Optional[int] = Non
     conn.close()
 
 
-def get_connections(app_id: int) -> List[Dict]:
+def log_audit(username: str, action: str, resource: Optional[str] = None, details: Optional[Dict] = None):
     conn = get_conn()
     c = conn.cursor()
-    c.execute("SELECT kind, host, port, name, metadata FROM app_connections WHERE app_id = ?", (app_id,))
-    rows = [dict(r) for r in c.fetchall()]
+    c.execute(
+        "INSERT INTO audit_log (username, action, resource, details) VALUES (?, ?, ?, ?)",
+        (username, action, resource, json.dumps(details or {})),
+    )
+    conn.commit()
     conn.close()
-    return rows
