@@ -279,3 +279,38 @@ def get_app_connections(app_name: str, user=Depends(get_current_user)):
             {"kind": "rabbitmq", "host": "rabbitmq.prod.svc", "port": 5672, "name": "events"},
         ]
     return {"app": app_name, "connections": conns}
+
+
+@app.get("/api/applications/{app_name}/deeplinks")
+def get_deeplinks(app_name: str):
+    """Dynamic deep links based on configured base URLs."""
+    from urllib.parse import quote
+    kibana = settings.kibana_url or "https://kibana.example.com"
+    dt = settings.dynatrace_ui_url or settings.dynatrace_url or "https://xxx.live.dynatrace.com"
+    return {
+        "kibana": f"{kibana}/app/discover#/?_g=(filters:!(('$state':(store:appState),meta:(key:service.name,params:(query:'{app_name}'),type:phrase),query:(match_phrase:(service.name:'{app_name}')))))",
+        "dynatrace": f"{dt}/#services",
+        "aws_ec2": f"{settings.aws_console_url}/ec2/v2/home",
+        "aws_ecs": f"{settings.aws_console_url}/ecs/home",
+        "okd": settings.okd_console_url or "https://okd-console.example.com",
+        "eks": settings.eks_console_url or "https://eks-console.example.com",
+    }
+
+
+@app.post("/api/admin/thresholds/{app_name}")
+def set_thresholds(app_name: str, thresholds: dict, user=Depends(get_current_user)):
+    """Set custom thresholds for an app (advanced role)."""
+    role = (user or {}).get("role", "viewer")
+    if role not in ("admin", "editor"):
+        raise HTTPException(403, "Permissão insuficiente")
+    from db import upsert_app, get_conn
+    import json
+    app_id = upsert_app(app_name)
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("UPDATE apps SET thresholds = ? WHERE id = ?", (json.dumps(thresholds), app_id))
+    conn.commit()
+    conn.close()
+    from db import log_audit
+    log_audit(user.get("username") if user else "anonymous", "set_thresholds", app_name, thresholds)
+    return {"status": "ok", "app": app_name}

@@ -45,9 +45,16 @@ class Settings(BaseSettings):
     # Admin filter (comma-separated names to show; empty = show all discovered)
     visible_resources: Optional[str] = os.getenv("VISIBLE_RESOURCES")
 
-    # General
-    app_list: Optional[str] = os.getenv("APP_LIST")  # comma-separated explicit list of apps (optional)
-    use_mock_if_unconfigured: bool = os.getenv("USE_MOCK_IF_UNCONFIGURED", "true").lower() == "true"
+    # Deep links (configurable base URLs)
+    kibana_url: Optional[str] = os.getenv("KIBANA_URL", "https://kibana.example.com")
+    dynatrace_ui_url: Optional[str] = os.getenv("DYNATRACE_UI_URL")
+    aws_console_url: str = os.getenv("AWS_CONSOLE_URL", "https://console.aws.amazon.com")
+    okd_console_url: Optional[str] = os.getenv("OKD_CONSOLE_URL")
+    eks_console_url: Optional[str] = os.getenv("EKS_CONSOLE_URL")
+
+    # Alerts (v1.1)
+    slack_webhook: Optional[str] = os.getenv("SLACK_WEBHOOK_URL")
+    teams_webhook: Optional[str] = os.getenv("TEAMS_WEBHOOK_URL")
 
     class Config:
         env_file = ".env"

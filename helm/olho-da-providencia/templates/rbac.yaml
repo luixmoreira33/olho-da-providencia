@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "olho-da-providencia.fullname" . }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "olho-da-providencia.fullname" . }}-reader
+rules:
+  - apiGroups: ["apps", ""]
+    resources: ["deployments", "pods", "services"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "olho-da-providencia.fullname" . }}-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "olho-da-providencia.fullname" . }}-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "olho-da-providencia.fullname" . }}
