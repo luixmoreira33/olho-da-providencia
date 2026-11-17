@@ -62,4 +62,4 @@ Se quiser uma lista fixa de apps, use `APP_LIST=app1,app2,app3`.
 
 ## Personalização do frontend
 
-O código está em `frontend/src/App.jsx`. Os cards, cores, filtros e layout são fáceis de ajustar. Qualquer mudança visual você pode fazer direto lá e me chamar se precisar de ajuda.
+O código está em `frontend/src/App.jsx`. Os cards, cores, filtros e layout são fáceis de ajustar.
