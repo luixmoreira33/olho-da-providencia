@@ -51,7 +51,36 @@ function DeepLinks({ app, dark }) {
   )
 }
 
-function Timeline({ appName, dark }) {
+function Connections({ appName, dark, advanced }) {
+  const [conns, setConns] = useState(null)
+  useEffect(() => {
+    if (!advanced) return
+    fetch(`/api/applications/${encodeURIComponent(appName)}/connections`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setConns(d?.connections || null))
+      .catch(() => {})
+  }, [appName, advanced])
+
+  if (!advanced) return (
+    <p style={{ fontSize: 13, color: dark ? '#9ca3af' : '#6b7280', marginTop: 12 }}>
+      Conexões (banco, Redis, RabbitMQ…) visíveis apenas para perfil avançado.
+    </p>
+  )
+  if (!conns) return null
+
+  return (
+    <div style={{ marginTop: 16, padding: 12, background: dark ? '#111827' : '#f1f5f9', borderRadius: 8 }}>
+      <h4 style={{ margin: '0 0 8px 0' }}>Conexões</h4>
+      <ul style={{ fontSize: 13, margin: 0, paddingLeft: 20 }}>
+        {conns.map((c, i) => (
+          <li key={i}>
+            <strong>{c.kind}</strong>: {c.host}{c.port ? `:${c.port}` : ''} {c.name ? `(${c.name})` : ''}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
   const [events, setEvents] = useState([])
   useEffect(() => {
     fetch(`/api/applications/${encodeURIComponent(appName)}/timeline`)
@@ -151,6 +180,7 @@ function AppCard({ app, dark }) {
           )}
 
           <Timeline appName={app.name} dark={dark} />
+          <Connections appName={app.name} dark={dark} advanced={true} />
           <DeepLinks app={app} dark={dark} />
         </div>
       )}

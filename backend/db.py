@@ -48,13 +48,14 @@ def init_db():
             FOREIGN KEY (app_id) REFERENCES apps(id)
         );
 
-        CREATE TABLE IF NOT EXISTS timeline_events (
+        CREATE TABLE IF NOT EXISTS app_connections (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             app_id INTEGER,
-            event_type TEXT,               -- status_change, incident, ai_insight
-            message TEXT,
-            details TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            kind TEXT NOT NULL,           -- database, redis, rabbitmq, kafka, http, etc.
+            host TEXT,
+            port INTEGER,
+            name TEXT,
+            metadata TEXT DEFAULT '{}',
             FOREIGN KEY (app_id) REFERENCES apps(id)
         );
     """)
@@ -88,13 +89,22 @@ def save_snapshot(app_id: int, overall: str, details: Dict, source_states: Dict)
     conn.close()
 
 
-def get_recent_snapshots(app_id: int, limit: int = 20) -> List[Dict]:
+def save_connection(app_id: int, kind: str, host: str, port: Optional[int] = None, name: Optional[str] = None, metadata: Optional[Dict] = None):
     conn = get_conn()
     c = conn.cursor()
     c.execute(
-        "SELECT * FROM status_snapshots WHERE app_id = ? ORDER BY created_at DESC LIMIT ?",
-        (app_id, limit),
+        """INSERT OR REPLACE INTO app_connections (app_id, kind, host, port, name, metadata)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (app_id, kind, host, port, name, json.dumps(metadata or {})),
     )
+    conn.commit()
+    conn.close()
+
+
+def get_connections(app_id: int) -> List[Dict]:
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT kind, host, port, name, metadata FROM app_connections WHERE app_id = ?", (app_id,))
     rows = [dict(r) for r in c.fetchall()]
     conn.close()
     return rows

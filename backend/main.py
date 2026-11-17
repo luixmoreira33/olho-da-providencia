@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from auth import get_current_user
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
@@ -255,3 +256,23 @@ def get_deeplinks(app_name: str):
         "okd": "https://okd-console.example.com",
         "eks": "https://eks-console.example.com",
     }
+
+
+@app.get("/api/applications/{app_name}/connections")
+def get_app_connections(app_name: str, user=Depends(get_current_user)):
+    """Return connected hosts/services. Advanced roles only."""
+    role = (user or {}).get("role", "viewer")
+    if role not in ("admin", "editor", "advanced"):
+        raise HTTPException(status_code=403, detail="Permissão avançada necessária para ver conexões")
+
+    from db import get_conn, upsert_app, get_connections
+    app_id = upsert_app(app_name)
+    conns = get_connections(app_id)
+    # Fallback demo data if none stored
+    if not conns:
+        conns = [
+            {"kind": "database", "host": "postgres-primary.prod.svc", "port": 5432, "name": "app_db"},
+            {"kind": "redis", "host": "redis-cluster.prod.svc", "port": 6379, "name": "cache"},
+            {"kind": "rabbitmq", "host": "rabbitmq.prod.svc", "port": 5672, "name": "events"},
+        ]
+    return {"app": app_name, "connections": conns}
