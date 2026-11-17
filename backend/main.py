@@ -226,3 +226,32 @@ def get_application(app_name: str):
 @app.get("/api/health")
 def health():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
+
+@app.get("/api/applications/{app_name}/timeline")
+def get_timeline(app_name: str, limit: int = 30):
+    """Return recent status snapshots as timeline."""
+    from db import get_conn, upsert_app
+    app_id = upsert_app(app_name)
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "SELECT overall_status, details, source_states, created_at FROM status_snapshots WHERE app_id = ? ORDER BY created_at DESC LIMIT ?",
+        (app_id, limit),
+    )
+    rows = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return {"app": app_name, "timeline": rows}
+
+
+@app.get("/api/applications/{app_name}/deeplinks")
+def get_deeplinks(app_name: str):
+    """Generate deep links for the application."""
+    return {
+        "kibana": f"https://kibana.example.com/app/discover#/?_g=(filters:!(('$state':(store:appState),meta:(key:service.name,params:(query:'{app_name}'),type:phrase),query:(match_phrase:(service.name:'{app_name}')))))",
+        "dynatrace": "https://xxx.live.dynatrace.com/#services",
+        "aws_ec2": "https://console.aws.amazon.com/ec2/v2/home",
+        "aws_ecs": "https://console.aws.amazon.com/ecs/home",
+        "okd": "https://okd-console.example.com",
+        "eks": "https://eks-console.example.com",
+    }
