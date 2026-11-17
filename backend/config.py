@@ -44,6 +44,8 @@ class Settings(BaseSettings):
 
     # Admin filter (comma-separated names to show; empty = show all discovered)
     visible_resources: Optional[str] = os.getenv("VISIBLE_RESOURCES")
+    app_list: Optional[str] = os.getenv("APP_LIST")
+    use_mock_if_unconfigured: bool = os.getenv("USE_MOCK_IF_UNCONFIGURED", "true").lower() == "true"
 
     # Deep links (configurable base URLs)
     kibana_url: Optional[str] = os.getenv("KIBANA_URL", "https://kibana.example.com")
